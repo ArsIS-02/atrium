@@ -2,7 +2,7 @@
   <img src="logo.svg" width="96" alt="Atrium">
 </p>
 
-# MyHomeLaboratory
+# Atrium
 
 Панель и редактор каталога сервисов домашней лаборатории. Flask-приложение, которое:
 
@@ -17,11 +17,11 @@
 ## Быстрый старт
 
 ```bash
-podman build -t myhomelab .
+podman build -t atrium .
 mkdir -p data && cp services.example.yaml data/services.yaml && cp generate.py data/
-podman run --rm -it -v "$PWD/data:/data:z" myhomelab flask set-pin
-podman run -d --name myhomelab -p 5000:5000 -v "$PWD/data:/data:z" \
-  -e CADDY_IMPORT=/data/Caddyfile.apps myhomelab
+podman run --rm -it -v "$PWD/data:/data:z" atrium flask set-pin
+podman run -d --name atrium -p 5000:5000 -v "$PWD/data:/data:z" \
+  -e CADDY_IMPORT=/data/Caddyfile.apps atrium
 ```
 
 Откройте `http://localhost:5000`. Для редактирования войдите по PIN.

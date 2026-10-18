@@ -10,7 +10,7 @@
 ## 1. Сборка образа
 
 ```bash
-podman build -t localhost/myhomelab:latest <HOME>/MyHomeLaboratory
+podman build -t localhost/atrium:latest <HOME>/atrium
 ```
 
 ## 2. Данные
@@ -20,7 +20,7 @@ podman build -t localhost/myhomelab:latest <HOME>/MyHomeLaboratory
 ## 3. PIN администратора
 
 ```bash
-podman run --rm -it -v <DATA>:/data:z localhost/myhomelab:latest flask set-pin
+podman run --rm -it -v <DATA>:/data:z localhost/atrium:latest flask set-pin
 ```
 
 Хранится только хеш, в `<DATA>/admin.json`.
@@ -28,12 +28,12 @@ podman run --rm -it -v <DATA>:/data:z localhost/myhomelab:latest flask set-pin
 ## 4. Запуск
 
 ```bash
-podman run -d --name myhomelab \
+podman run -d --name atrium \
   -e ZONE=<ZONE> \
   -p 5000:5000 \
   -v <DATA>:/data:z \
   -v <CADDY_CONFIG>:/caddy:z \
-  localhost/myhomelab:latest
+  localhost/atrium:latest
 ```
 
 ## 5. Перезагрузка Caddy после изменений

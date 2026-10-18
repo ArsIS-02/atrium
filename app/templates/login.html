@@ -18,7 +18,7 @@
     </div>
     {% else %}
     <p class="notice warn">PIN ещё не задан. Администратор задаёт его на сервере командой:</p>
-    <pre class="cmd">podman exec -it myhomelab flask set-pin</pre>
+    <pre class="cmd">podman exec -it atrium flask set-pin</pre>
     <div class="form-actions">
       <a class="btn" href="{{ url_for('index') }}">Назад</a>
     </div>

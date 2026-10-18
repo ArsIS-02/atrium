@@ -5,13 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="color-scheme" content="light dark">
   <meta name="csrf-token" content="{{ csrf_token() }}">
-  <title>{{ title or 'HomeLab' }}</title>
+  <title>{{ title or 'Atrium' }}</title>
   <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
 </head>
 <body{% if bg %} class="has-bg" style="--bg-url: url({{ bg.url }}); --bg-dim: {{ bg.dim }}"{% endif %}>
   <header class="appbar">
-    <a class="brand" href="{{ url_for('index') }}"><span class="logo" aria-hidden="true">⌂</span>HomeLab</a>
+    <a class="brand" href="{{ url_for('index') }}"><img class="logo" src="{{ url_for('static', filename='logo.svg') }}" width="22" height="22" alt="">Atrium</a>
     <div class="search-slot">{% block search %}{% endblock %}</div>
     <nav class="appnav" aria-label="Действия">
       <a class="btn ghost" href="{{ url_for('help_page') }}">Справка</a>

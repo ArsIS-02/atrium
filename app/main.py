@@ -1,4 +1,4 @@
-"""MyHomeLaboratory: панель и редактор каталога сервисов домашней сети."""
+"""Atrium: панель и редактор каталога сервисов домашней сети."""
 from __future__ import annotations
 
 import datetime
@@ -203,7 +203,7 @@ def load() -> dict:
 
 def save(data: dict) -> None:
     header = ('# Единый источник истины: сервисы домашней лаборатории.\n'
-              '# Правится через MyHomeLaboratory (можно и вручную).\n'
+              '# Правится через Atrium (можно и вручную).\n'
               '# Поля: name, title, group, backend, scheme (http|https), path, insecure, auth, icon, description, href\n\n')
     tmp = SERVICES_YAML.with_name(SERVICES_YAML.name + '.tmp')
     tmp.write_text(header + yaml.safe_dump(data, allow_unicode=True, sort_keys=False,
