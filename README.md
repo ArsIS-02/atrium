@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="logo.svg" width="96" alt="Atrium">
+</p>
+
 # MyHomeLaboratory
 
 Панель и редактор каталога сервисов домашней лаборатории. Flask-приложение, которое:
