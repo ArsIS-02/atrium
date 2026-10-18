@@ -6,7 +6,7 @@
     <p class="hint">Фон видят все, кто открывает панель. Менять его может только администратор.</p>
 
     <div class="bg-preview">
-      {% if bg %}<img src="{{ bg.url }}" alt="Текущий фон">{% else %}<span>Фон не задан, используется стандартный</span>{% endif %}
+      {% if bg %}<img src="{{ bg.url }}" alt="Текущий фон"><span class="bg-preview-dim"></span>{% else %}<span>Фон не задан, используется стандартный</span>{% endif %}
     </div>
 
     <form method="post" action="{{ url_for('appearance_upload') }}" enctype="multipart/form-data">
@@ -24,9 +24,9 @@
     <form method="post" action="{{ url_for('appearance_settings') }}">
       <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
       <label>Затемнение: <b id="dim-out">{{ dim }}</b>%
-        <small>Чем больше, тем темнее фон и лучше читаются карточки.</small>
+        <small>Чем больше, тем темнее фон и лучше читаются карточки. Двигая ползунок, видите результат сразу; чтобы он сохранился для всех, нажмите кнопку.</small>
         <input type="range" name="dim" min="0" max="80" step="5" value="{{ dim }}"
-               oninput="document.getElementById('dim-out').textContent = this.value">
+               oninput="document.getElementById('dim-out').textContent = this.value; document.body.style.setProperty('--bg-dim', this.value / 100)">
       </label>
       <div class="form-actions">
         <span class="spacer"></span>

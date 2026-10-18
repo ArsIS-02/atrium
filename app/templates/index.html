@@ -4,7 +4,7 @@
 {% endblock %}
 {% block body %}
 {% if not is_admin %}
-<p class="notice readonly">Режим просмотра. {% if pin_set %}<a href="{{ url_for('login', next=request.path) }}">Войдите по PIN</a>, чтобы добавлять и менять сервисы.{% else %}PIN ещё не задан, редактирование закрыто.{% endif %}</p>
+<p class="notice readonly">Режим просмотра. {% if pass_set %}<a href="{{ url_for('login', next=request.path) }}">Войдите</a> с паролем администратора, чтобы добавлять и менять сервисы.{% else %}Пароль администратора ещё не задан, редактирование закрыто.{% endif %}</p>
 {% endif %}
 <main class="layout">
   <nav class="sidebar" aria-label="Группы">

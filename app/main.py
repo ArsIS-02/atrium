@@ -34,10 +34,14 @@ STATUS_INTERVAL = int(os.environ.get('STATUS_INTERVAL', '30'))
 CADDY_HOST = os.environ.get('CADDY_HOST', 'host.containers.internal')
 CADDY_PORT = int(os.environ.get('CADDY_PORT', '443'))
 
-# Вход администратора по PIN (9 цифр). Хранится только хеш.
+# Вход администратора по паролю (не меньше 9 знаков). Хранится только хеш.
 ADMIN_FILE = Path(os.environ.get('ADMIN_FILE', HOMELAB_DIR / 'admin.json'))
 SECRET_FILE = HOMELAB_DIR / 'secret.key'
-PIN_RE = re.compile(r'^\d{9}$')
+PASS_MIN = 9
+PASS_MAX = 128
+# Самые частые пароли и однотипные строки. Список короткий: длина важнее набора символов.
+PASS_TOO_SIMPLE = {'123456789', '1234567890', '12345678', '123123123', '111111111', '000000000',
+                   'password', 'password1', 'qwerty123', 'qwertyuiop', 'abcdefghi', 'letmein12'}
 LOGIN_MAX_FAILS = 5
 LOGIN_WINDOW = 15 * 60
 
@@ -93,24 +97,39 @@ app.secret_key = _load_secret()
 
 # --- вход администратора -----------------------------------------------------
 
-def _pin_hash() -> str | None:
+def _password_hash() -> str | None:
+    # 'pin_hash' читаем для совместимости: так хранились данные версий с PIN
     try:
-        return json.loads(ADMIN_FILE.read_text(encoding='utf-8')).get('pin_hash')
+        data = json.loads(ADMIN_FILE.read_text(encoding='utf-8'))
     except (OSError, ValueError, AttributeError):
         return None
+    return data.get('password_hash') or data.get('pin_hash')
 
 
-def pin_is_set() -> bool:
-    return bool(_pin_hash())
+def password_is_set() -> bool:
+    return bool(_password_hash())
 
 
-def check_pin(pin: str) -> bool:
-    h = _pin_hash()
-    return bool(h) and bool(PIN_RE.match(pin)) and check_password_hash(h, pin)
+def password_error(pwd: str) -> str | None:
+    """Текст ошибки, если пароль не подходит, иначе None."""
+    if len(pwd) < PASS_MIN:
+        return f'Нужно не меньше {PASS_MIN} знаков.'
+    if len(pwd) > PASS_MAX:
+        return f'Не больше {PASS_MAX} знаков.'
+    if not all(32 <= ord(ch) < 127 for ch in pwd):
+        return 'Используйте латинские буквы, цифры и знаки. Кириллица и невидимые символы плохо набираются на разных устройствах.'
+    if len(set(pwd)) == 1 or pwd.lower() in PASS_TOO_SIMPLE:
+        return 'Такой пароль слишком простой. Придумайте другой.'
+    return None
+
+
+def check_password(pwd: str) -> bool:
+    h = _password_hash()
+    return bool(h) and len(pwd) <= PASS_MAX and check_password_hash(h, pwd)
 
 
 def is_admin() -> bool:
-    return session.get('admin') is True and pin_is_set()
+    return session.get('admin') is True and password_is_set()
 
 
 _fails: dict[str, list[float]] = {}
@@ -157,7 +176,7 @@ def _check_csrf():
 
 @app.context_processor
 def _template_globals():
-    return {'csrf_token': csrf_token, 'is_admin': is_admin(), 'pin_set': pin_is_set(),
+    return {'csrf_token': csrf_token, 'is_admin': is_admin(), 'pass_set': password_is_set(),
             'bg': background_info()}
 
 
@@ -167,28 +186,29 @@ def admin_required(view):
         if is_admin():
             return view(*args, **kwargs)
         if request.path.startswith('/api/'):
-            return jsonify(ok=False, msg='Нужен вход администратора (PIN)'), 401
-        flash('Чтобы менять сервисы, войдите по PIN', 'error')
+            return jsonify(ok=False, msg='Нужен вход администратора (пароль)'), 401
+        flash('Чтобы менять сервисы, войдите по паролю администратора', 'error')
         return redirect(url_for('login', next=request.full_path.rstrip('?')))
     return wrapped
 
 
-@app.cli.command('set-pin')
-def set_pin_cmd():
-    """Задаёт PIN администратора (ровно 9 цифр)."""
+@app.cli.command('set-password')
+def set_password_cmd():
+    """Задаёт пароль администратора (не меньше 9 знаков)."""
     while True:
-        pin = click.prompt('Новый PIN (9 цифр)', hide_input=True)
-        if not PIN_RE.match(pin):
-            click.echo('Нужно ровно 9 цифр, попробуйте ещё раз.')
+        pwd = click.prompt('Новый пароль администратора (не меньше 9 знаков)', hide_input=True)
+        err = password_error(pwd)
+        if err:
+            click.echo(err + ' Попробуйте ещё раз.')
             continue
-        if click.prompt('Повторите PIN', hide_input=True) != pin:
-            click.echo('PIN не совпадает, попробуйте ещё раз.')
+        if click.prompt('Повторите пароль', hide_input=True) != pwd:
+            click.echo('Пароли не совпадают, попробуйте ещё раз.')
             continue
         break
-    ADMIN_FILE.write_text(json.dumps({'pin_hash': generate_password_hash(pin),
+    ADMIN_FILE.write_text(json.dumps({'password_hash': generate_password_hash(pwd),
                                       'updated': int(time.time())}), encoding='utf-8')
     os.chmod(ADMIN_FILE, 0o600)
-    click.echo('PIN сохранён. Старые сессии останутся действительны до конца их срока (8 ч).')
+    click.echo('Пароль сохранён. Старые сессии останутся действительны до конца их срока (8 ч).')
 
 
 # --- хранилище ---------------------------------------------------------------
@@ -598,14 +618,15 @@ def login():
         if _login_blocked(ip):
             flash('Слишком много неверных попыток. Подождите 15 минут.', 'error')
             return render_template('login.html', next=nxt), 429
-        pin = re.sub(r'\s', '', request.form.get('pin', ''))
-        if check_pin(pin):
+        # Пробелы внутри пароля значимы, поэтому строку не обрезаем
+        pwd = request.form.get('password', '')
+        if check_password(pwd):
             _login_reset(ip)
             session.permanent = True
             session['admin'] = True
             return redirect(nxt)
         _login_failed(ip)
-        flash('Неверный PIN', 'error')
+        flash('Неверный пароль', 'error')
         return render_template('login.html', next=nxt), 401
     return render_template('login.html', next=nxt)
 

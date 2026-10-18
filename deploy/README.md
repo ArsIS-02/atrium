@@ -17,13 +17,13 @@ podman build -t localhost/atrium:latest <HOME>/atrium
 
 В `<DATA>` кладём `services.yaml` (за основу берём `services.example.yaml`) и `generate.py` из репозитория.
 
-## 3. PIN администратора
+## 3. Пароль администратора
 
 ```bash
-podman run --rm -it -v <DATA>:/data:z localhost/atrium:latest flask set-pin
+podman run --rm -it -v <DATA>:/data:z localhost/atrium:latest flask set-password
 ```
 
-Хранится только хеш, в `<DATA>/admin.json`.
+Не меньше 9 знаков, до 128, латинские буквы, цифры и знаки. Хранится только хеш, в `<DATA>/admin.json`. Пароль, заданный в предыдущей версии PIN-кодом, продолжит работать без изменений.
 
 ## 4. Запуск
 
