@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+{% block body %}
+<main class="form-wrap">
+  <form class="sheet" method="post" action="{{ url_for('login') }}">
+    <h2>Вход по PIN</h2>
+    <p class="hint">Просматривать панель может любой, кто в этой сети. PIN нужен, чтобы добавлять, менять и удалять сервисы.</p>
+    {% if pin_set %}
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <input type="hidden" name="next" value="{{ next }}">
+    <label>PIN (9 цифр)
+      <input name="pin" type="password" inputmode="numeric" autocomplete="off"
+             pattern="[0-9 ]{9,11}" maxlength="11" required autofocus>
+    </label>
+    <div class="form-actions">
+      <a class="btn" href="{{ url_for('index') }}">Назад</a>
+      <span class="spacer"></span>
+      <button type="submit" class="btn primary">Войти</button>
+    </div>
+    {% else %}
+    <p class="notice warn">PIN ещё не задан. Администратор задаёт его на сервере командой:</p>
+    <pre class="cmd">podman exec -it myhomelab flask set-pin</pre>
+    <div class="form-actions">
+      <a class="btn" href="{{ url_for('index') }}">Назад</a>
+    </div>
+    {% endif %}
+  </form>
+</main>
+{% endblock %}

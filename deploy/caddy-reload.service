@@ -1,0 +1,9 @@
+# Пример: перезагрузка Caddy внутри контейнера. Запускается вместе с caddy-reload.path.
+# Имя контейнера и пути замените на свои. Проверено только вручную, не как автоматика.
+[Unit]
+Description=Reload Caddy after homelab config change
+
+[Service]
+Type=oneshot
+User=<USER>
+ExecStart=/usr/bin/podman exec caddy caddy reload --config /etc/caddy/Caddyfile

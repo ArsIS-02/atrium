@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+{% block body %}
+<main class="form-wrap">
+  <section class="sheet">
+    <h2>Оформление</h2>
+    <p class="hint">Фон видят все, кто открывает панель. Менять его может только администратор.</p>
+
+    <div class="bg-preview">
+      {% if bg %}<img src="{{ bg.url }}" alt="Текущий фон">{% else %}<span>Фон не задан, используется стандартный</span>{% endif %}
+    </div>
+
+    <form method="post" action="{{ url_for('appearance_upload') }}" enctype="multipart/form-data">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <label>Новый фон
+        <small>JPG, PNG или WebP, до 3 МБ. Лучше широкая картинка, например 1920×1080.</small>
+        <input type="file" name="file" accept="image/jpeg,image/png,image/webp" required>
+      </label>
+      <div class="form-actions">
+        <span class="spacer"></span>
+        <button class="btn primary" type="submit">Загрузить фон</button>
+      </div>
+    </form>
+
+    <form method="post" action="{{ url_for('appearance_settings') }}">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <label>Затемнение: <b id="dim-out">{{ dim }}</b>%
+        <small>Чем больше, тем темнее фон и лучше читаются карточки.</small>
+        <input type="range" name="dim" min="0" max="80" step="5" value="{{ dim }}"
+               oninput="document.getElementById('dim-out').textContent = this.value">
+      </label>
+      <div class="form-actions">
+        <span class="spacer"></span>
+        <button class="btn" type="submit">Сохранить затемнение</button>
+      </div>
+    </form>
+
+    <form method="post" action="{{ url_for('appearance_reset') }}" data-confirm="Убрать свой фон?">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <div class="form-actions">
+        <span class="spacer"></span>
+        <button class="btn danger" type="submit" {{ 'disabled' if not bg }}>Убрать фон</button>
+      </div>
+    </form>
+
+    <p class="back"><a href="{{ url_for('index') }}">← К панели</a></p>
+  </section>
+</main>
+{% endblock %}

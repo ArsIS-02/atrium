@@ -1,0 +1,116 @@
+{% extends 'base.html' %}
+{% block body %}
+<main class="help">
+  <h1 class="help-title">Справка: как добавить сервис</h1>
+  <p class="help-lead">Коротко: укажите, где сервис реально работает (Backend), и как он отвечает (схема). Всё остальное — название, адрес и иконка — для удобства. Ниже схема, пошаговая инструкция, примеры и частые ошибки.</p>
+
+  <section>
+    <h2>Как это работает</h2>
+    <figure>
+      <svg viewBox="0 0 720 170" role="img" aria-label="Схема: браузер, Caddy, сервис">
+        <defs>
+          <marker id="arrA" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+            <path d="M0,0 L10,5 L0,10 z" style="fill: var(--text3)"/>
+          </marker>
+        </defs>
+        <rect class="svg-box" x="10" y="40" width="160" height="90" rx="14"/>
+        <text class="svg-t" x="90" y="78" text-anchor="middle">Браузер</text>
+        <text class="svg-s" x="90" y="100" text-anchor="middle">ваш компьютер</text>
+        <line class="svg-line" x1="172" y1="85" x2="266" y2="85" marker-end="url(#arrA)"/>
+        <text class="svg-s" x="219" y="76" text-anchor="middle">HTTPS</text>
+        <rect class="svg-box" x="270" y="40" width="180" height="90" rx="14"/>
+        <text class="svg-t" x="360" y="78" text-anchor="middle">Caddy</text>
+        <text class="svg-s" x="360" y="100" text-anchor="middle">сертификат и маршрут</text>
+        <line class="svg-line" x1="452" y1="85" x2="546" y2="85" marker-end="url(#arrA)"/>
+        <text class="svg-s" x="499" y="76" text-anchor="middle">http или https</text>
+        <rect class="svg-box" x="550" y="40" width="160" height="90" rx="14"/>
+        <text class="svg-t" x="630" y="78" text-anchor="middle">Сервис</text>
+        <text class="svg-s" x="630" y="100" text-anchor="middle">Backend: host:port</text>
+      </svg>
+      <figcaption>Адрес, который открываете вы (имя.{{ zone }}), и адрес Backend — это разные вещи. Caddy стоит между ними.</figcaption>
+    </figure>
+  </section>
+
+  <section>
+    <h2>Пошагово</h2>
+    <ol>
+      <li>Нажмите «Войти» и введите PIN. Без входа панель только показывает сервисы.</li>
+      <li>Нажмите «Добавить». Заполните название, адрес (короткое имя латиницей) и группу.</li>
+      <li>Укажите Backend: адрес и порт, где сервис реально слушает. Затем выберите схему: как он отвечает, по http или по https.</li>
+      <li>Нажмите «Проверить бэкенд». Ответ <code>HTTP 200</code>, <code>401</code> или <code>403</code> значит, что сервис отвечает.</li>
+      <li>Нажмите «Сохранить».</li>
+      <li>Перезагрузите Caddy на сервере. Пока это делается вручную, команда такая:
+        <pre class="cmd">podman exec caddy caddy reload --config /etc/caddy/Caddyfile</pre>
+      </li>
+      <li>В форме нажмите «Проверить сертификат». Должно быть «Сертификат есть». После этого откройте адрес сервиса.</li>
+    </ol>
+  </section>
+
+  <section>
+    <h2>Пример 1: сервис на другой машине, по http</h2>
+    <p>Веб-интерфейс работает на <code>192.168.0.10</code>, порт <code>8080</code>, открывается по <code>http://192.168.0.10:8080</code>.</p>
+    <table>
+      <tr><th>Поле</th><th>Что писать</th></tr>
+      <tr><td>Название</td><td>Мой сервис</td></tr>
+      <tr><td>Адрес</td><td><code>myservice</code>, сайт откроется по <code>myservice.{{ zone }}</code></td></tr>
+      <tr><td>Backend</td><td><code>192.168.0.10:8080</code></td></tr>
+      <tr><td>Схема</td><td><code>http</code></td></tr>
+      <tr><td>Галочки, префикс пути, ссылка</td><td>оставить пустыми</td></tr>
+    </table>
+  </section>
+
+  <section>
+    <h2>Пример 2: сервис на самом сервере панели</h2>
+    <p>Сервис работает на той же машине, что и Caddy, порт <code>9000</code>. Адрес <code>localhost</code> в Backend не подходит: внутри контейнера Caddy это он сам, а не сервер.</p>
+    <figure>
+      <svg viewBox="0 0 720 190" role="img" aria-label="localhost указывает на контейнер, host.containers.internal на сервер">
+        <rect class="svg-box dashed" x="10" y="30" width="270" height="140" rx="14"/>
+        <text class="svg-t" x="145" y="62" text-anchor="middle">Контейнер Caddy</text>
+        <text class="svg-s" x="145" y="92" text-anchor="middle">localhost:9000</text>
+        <text class="svg-bad" x="145" y="124" text-anchor="middle">✕ здесь сервиса нет</text>
+        <rect class="svg-box" x="400" y="30" width="310" height="140" rx="14"/>
+        <text class="svg-t" x="555" y="62" text-anchor="middle">Сервер панели</text>
+        <text class="svg-s" x="555" y="92" text-anchor="middle">сервис слушает порт 9000</text>
+        <text class="svg-ok" x="555" y="124" text-anchor="middle">✓ в Backend: host.containers.internal:9000</text>
+        <line class="svg-line" x1="282" y1="100" x2="398" y2="100"/>
+      </svg>
+      <figcaption>Для сервиса на этом же сервере в поле Backend пишите <code>host.containers.internal:ПОРТ</code>.</figcaption>
+    </figure>
+  </section>
+
+  <section>
+    <h2>Поля формы</h2>
+    <table>
+      <tr><th>Поле</th><th>Что писать</th><th>Пример</th></tr>
+      <tr><td>Название</td><td>Как карточка называется на панели</td><td>Мой сервис</td></tr>
+      <tr><td>Адрес</td><td>Короткое имя латиницей, станет адресом сайта</td><td><code>myservice</code></td></tr>
+      <tr><td>Группа</td><td>Раздел в боковом меню</td><td>Infrastructure</td></tr>
+      <tr><td>Backend</td><td>host:port, где сервис слушает. Без http:// и пути. Слэш в конце уберём сами</td><td><code>192.168.0.10:8080</code></td></tr>
+      <tr><td>Схема</td><td>http, если сервис открывается по http://, https, если по https://</td><td><code>http</code></td></tr>
+      <tr><td>Не проверять сертификат</td><td>Только если на https самоподписанный сертификат</td><td>галочка</td></tr>
+      <tr><td>Закрыть входом через Caddy</td><td>Caddy спросит логин перед открытием. Работает, только если на сервере задан вход Caddy</td><td>не включать без настройки</td></tr>
+      <tr><td>Префикс пути</td><td>Только если сервис живёт под путём, например <code>/nagios</code></td><td>пусто</td></tr>
+      <tr><td>Иконка</td><td>Из списка или своя картинка (png, svg, webp)</td><td><code>graylog</code></td></tr>
+      <tr><td>Ссылка</td><td>Куда ведёт клик по карточке, если не на адрес по имени</td><td><code>https://server:8889/app/</code></td></tr>
+    </table>
+  </section>
+
+  <section>
+    <h2>Частые ошибки</h2>
+    <table>
+      <tr><th>Что видите</th><th>Почему</th><th>Что сделать</th></tr>
+      <tr><td>«Проверить бэкенд»: нет ответа</td><td>Неверный адрес или порт, либо сервис не запущен</td><td>Проверьте host:port и запущен ли сервис</td></tr>
+      <tr><td>Ошибка про http:// в поле Backend</td><td>Схема написана в адресе</td><td>Уберите http://, выберите схему полем «Схема»</td></tr>
+      <tr><td>Бэкенд отвечает, а адрес в браузере не открывается</td><td>Caddy не перезагружен после сохранения</td><td>Выполните команду перезагрузки Caddy</td></tr>
+      <tr><td>«Недействительный ответ» или ERR_SSL_PROTOCOL_ERROR</td><td>Caddy не знает этот адрес, блок не загружен</td><td>Перезагрузите Caddy, затем «Проверить сертификат»</td></tr>
+      <tr><td>502 Bad Gateway</td><td>Неверная схема: https вместо http или наоборот</td><td>Поменяйте схему и проверьте бэкенд</td></tr>
+      <tr><td>Предупреждение о сертификате только на одном устройстве</td><td>На устройстве не установлен корень Caddy</td><td>Установите корневой сертификат Caddy на это устройство</td></tr>
+    </table>
+  </section>
+
+  <section>
+    <h2>Вход и PIN</h2>
+    <p>PIN из 9 цифр задаёт администратор на сервере командой <code>podman exec -it myhomelab flask set-pin</code>. Хранится только хеш. После пяти неверных попыток вход блокируется на 15 минут.</p>
+  </section>
+</main>
+{% endblock %}

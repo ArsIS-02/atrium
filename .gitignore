@@ -1,0 +1,16 @@
+# Личные данные и runtime-файлы: в репозиторий не попадают
+services.yaml
+generated/
+secret.key
+admin.json
+settings.json
+backgrounds/
+icons/
+.env
+
+# Служебное
+__pycache__/
+*.pyc
+.venv/
+*.tar.gz
+*.tmp

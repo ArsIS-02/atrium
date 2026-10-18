@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+{% block search %}
+<input id="search" class="search" type="search" placeholder="Поиск сервисов" aria-label="Поиск сервисов" autocomplete="off">
+{% endblock %}
+{% block body %}
+{% if not is_admin %}
+<p class="notice readonly">Режим просмотра. {% if pin_set %}<a href="{{ url_for('login', next=request.path) }}">Войдите по PIN</a>, чтобы добавлять и менять сервисы.{% else %}PIN ещё не задан, редактирование закрыто.{% endif %}</p>
+{% endif %}
+<main class="layout">
+  <nav class="sidebar" aria-label="Группы">
+    <a class="group{% if not current_group %} active{% endif %}" href="{{ url_for('index') }}">
+      <span>Все</span><span class="count">{{ all_count }}</span>
+    </a>
+    {% for g in groups %}
+    <a class="group{% if current_group == g %} active{% endif %}" href="{{ url_for('index', group=g) }}">
+      <span>{{ g }}</span>
+    </a>
+    {% endfor %}
+  </nav>
+
+  <section class="grid" id="grid">
+    {% for s in services %}
+    <article class="card" style="--i: {{ loop.index }}" data-name="{{ s.name }}"
+             data-search="{{ ((s.title or '') ~ ' ' ~ s.name ~ ' ' ~ (s.description or ''))|lower }}">
+      <a class="card-link" href="{{ s.href or ('https://' ~ s.name ~ '.' ~ zone ~ '/') }}" target="_blank" rel="noopener">
+        <div class="tile">
+          <img src="{{ s.icon|icon }}" alt="" loading="lazy" width="56" height="56">
+          <span class="dot pending" data-status title="Проверяется…"></span>
+        </div>
+        <h3>{{ s.title }}</h3>
+        <p>{{ s.description or (s.name ~ '.' ~ zone) }}</p>
+      </a>
+      {% if is_admin %}
+      <div class="actions">
+        <a class="pill" href="{{ url_for('edit', name=s.name) }}">Изменить</a>
+        <form method="post" action="{{ url_for('delete', name=s.name) }}" data-confirm="Удалить «{{ s.title }}»?">
+          <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+          <button class="pill danger" type="submit">Удалить</button>
+        </form>
+      </div>
+      {% endif %}
+    </article>
+    {% else %}
+    <p class="empty">Пока нет сервисов. Нажмите «Добавить».</p>
+    {% endfor %}
+    <p class="empty" id="no-match" hidden>Ничего не найдено</p>
+  </section>
+</main>
+{% endblock %}

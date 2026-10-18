@@ -1,0 +1,38 @@
+# Пример каталога сервисов. Скопируйте в services.yaml и поправьте под свою сеть.
+# services.yaml в репозиторий не попадает (см. .gitignore).
+#
+# backend — host:port, где сервис реально слушает (без http:// и без пути).
+# Сервис на той же машине, что и Caddy: host.containers.internal:ПОРТ
+services:
+- name: grafana
+  title: Grafana
+  group: Monitoring
+  backend: 192.168.0.20:3000
+  scheme: http
+  icon: grafana
+  description: Дашборды метрик
+
+- name: portainer
+  title: Portainer
+  group: Containers
+  backend: 192.168.0.21:9443
+  scheme: https
+  insecure: true
+  icon: portainer
+  description: Управление контейнерами
+
+- name: nas
+  title: NAS
+  group: Infrastructure
+  backend: 192.168.0.30:5000
+  scheme: http
+  icon: synology-dsm
+  description: Файловое хранилище
+
+- name: router
+  title: Роутер
+  group: Infrastructure
+  backend: 192.168.0.1:80
+  scheme: http
+  icon: router
+  description: Веб-интерфейс роутера

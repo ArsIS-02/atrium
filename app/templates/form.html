@@ -1,0 +1,94 @@
+{% extends 'base.html' %}
+{% block body %}
+<main class="form-wrap">
+  <form class="sheet" method="post" id="svc-form" data-zone="{{ zone }}" data-original="{{ original }}">
+    <h2>{{ 'Изменить сервис' if is_edit else 'Новый сервис' }}</h2>
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+
+    <label>Название
+      <input name="title" value="{{ service.title or '' }}" required autofocus>
+      <small>Как карточка называется на панели. Можно с пробелами и по-русски.</small>
+    </label>
+
+    <label>Адрес
+      <div class="addr">
+        <input name="name" value="{{ service.name or '' }}" required pattern="[a-z0-9][a-z0-9\-]{0,62}" autocomplete="off" spellcheck="false">
+        <span>.{{ zone }}</span>
+      </div>
+      <small>Короткое имя латиницей: буквы, цифры и дефис, без пробелов. Оно становится адресом сайта.</small>
+      <small>Будет открываться по <b id="addr-preview">{{ service.name or 'имя' }}.{{ zone }}</b></small>
+    </label>
+    <p class="notice warn" id="rename-warn" hidden>Адрес изменится: старая ссылка перестанет работать.</p>
+
+    <label>Группа
+      <input name="group" value="{{ service.group or 'Other' }}" list="groups-list" autocomplete="off">
+      <small>Раздел в боковом меню. Выберите существующий или введите новый.</small>
+      <datalist id="groups-list">
+        {% for g in known_groups %}<option value="{{ g }}">{% endfor %}
+      </datalist>
+    </label>
+
+    <div class="row">
+      <label class="grow">Backend (host:port)
+        <input name="backend" value="{{ service.backend or '' }}" required placeholder="192.168.0.10:80">
+        <small>Адрес и порт, где сервис реально слушает. Без http:// (схему выберите справа). Слэш в конце уберём сами.
+          Сервис на этом же сервере, где работает панель: <b>host.containers.internal:ПОРТ</b>.
+          Сервис на другой машине: её имя или IP и порт, например <b>192.168.0.10:80</b>.</small>
+      </label>
+      <label>Схема
+        <select name="scheme">
+          <option value="http" {{ 'selected' if service.scheme != 'https' }}>http</option>
+          <option value="https" {{ 'selected' if service.scheme == 'https' }}>https</option>
+        </select>
+        <small>Как сервис отвечает на порту: по http:// или по https://. Неверная схема даёт ошибку 502.</small>
+      </label>
+    </div>
+
+    <div class="checks">
+      <label class="check"><input type="checkbox" name="insecure" {{ 'checked' if service.insecure }}> Не проверять сертификат (self-signed)</label>
+      <label class="check"><input type="checkbox" name="auth" {{ 'checked' if service.auth }}> Закрыть входом через Caddy</label>
+    </div>
+    <p class="hint">Первая галочка — если сервис на https с самоподписанным сертификатом. Вторая — Caddy спросит логин перед открытием; работает, только если на сервере заданы PANEL_USER и PANEL_PASS_HASH.</p>
+
+    <label>Префикс пути <small>только если сервис открывается не с корня, например по /nagios/. Иначе оставьте пустым.</small>
+      <input name="path" value="{{ service.path or '' }}" placeholder="/nagios">
+    </label>
+
+    <label>Иконка <small>Выберите из списка ниже или загрузите свою картинку (png, svg, webp). Пусто — иконка по умолчанию.</small>
+      <div class="icon-field">
+        <img id="icon-preview" class="icon-preview" src="{{ service.icon|icon }}" alt="">
+        <input id="icon-input" name="icon" value="{{ service.icon or '' }}" placeholder="graylog" autocomplete="off" spellcheck="false">
+      </div>
+      <div class="icon-upload">
+        <button type="button" class="btn" id="icon-upload-btn">Загрузить свою иконку</button>
+        <input type="file" id="icon-file" accept=".png,.svg,.webp" hidden>
+        <span id="icon-upload-msg" class="check-result"></span>
+      </div>
+      <div id="icon-results" class="icon-results"></div>
+    </label>
+
+    <label>Ссылка <small>Необязательно. Куда ведёт клик по карточке. Пусто — открывается адрес по имени (https://имя.{{ zone }}/). Заполняйте, если нужна конкретная страница сервиса.</small>
+      <input name="href" value="{{ service.href or '' }}" placeholder="https://server.lab.example:8889/app/index.html#/welcome">
+    </label>
+
+    <label>Описание
+      <textarea name="description" rows="2">{{ service.description or '' }}</textarea>
+    </label>
+
+    <p class="hint">«Проверить бэкенд» делает запрос с сервера панели. Если ответ есть, а адрес в браузере не открывается, проблема в Caddy: после сохранения его нужно перезагрузить (команда в <a href="{{ url_for('help_page') }}">Справке</a>).</p>
+
+    <div class="form-actions">
+      <button type="button" class="btn" id="check-backend">Проверить бэкенд</button>
+      <span id="check-result" class="check-result"></span>
+    </div>
+    <p class="hint">«Проверить сертификат» смотрит, отдаёт ли Caddy сертификат для адреса этого сервиса. Caddy выпускает его сам, когда перезагружает конфиг, поэтому сначала сохраните и перезагрузите Caddy.</p>
+    <div class="form-actions">
+      <button type="button" class="btn" id="check-cert">Проверить сертификат</button>
+      <span id="cert-result" class="check-result"></span>
+      <span class="spacer"></span>
+      <a class="btn" href="{{ url_for('index') }}">Отмена</a>
+      <button type="submit" class="btn primary">Сохранить</button>
+    </div>
+  </form>
+</main>
+{% endblock %}

@@ -1,0 +1,11 @@
+# Пример: перезагружать Caddy при изменении его конфига.
+# Замените путь на свой каталог caddy_config (тот, что смонтирован в контейнер caddy).
+# Установка и проверка: deploy/README.md
+[Unit]
+Description=Watch Caddy import file for homelab changes
+
+[Path]
+PathModified=/path/to/caddy_config/Caddyfile.apps
+
+[Install]
+WantedBy=multi-user.target

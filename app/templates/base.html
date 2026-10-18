@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="light dark">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  <title>{{ title or 'HomeLab' }}</title>
+  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
+</head>
+<body{% if bg %} class="has-bg" style="--bg-url: url({{ bg.url }}); --bg-dim: {{ bg.dim }}"{% endif %}>
+  <header class="appbar">
+    <a class="brand" href="{{ url_for('index') }}"><span class="logo" aria-hidden="true">⌂</span>HomeLab</a>
+    <div class="search-slot">{% block search %}{% endblock %}</div>
+    <nav class="appnav" aria-label="Действия">
+      <a class="btn ghost" href="{{ url_for('help_page') }}">Справка</a>
+      {% if is_admin %}
+        <form method="post" action="{{ url_for('logout') }}">
+          <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+          <button class="btn ghost" type="submit">Выйти</button>
+        </form>
+        <a class="btn ghost" href="{{ url_for('appearance') }}">Оформление</a>
+        <a class="btn primary" href="{{ url_for('add') }}">Добавить</a>
+      {% else %}
+        <a class="btn ghost" href="{{ url_for('login', next=request.full_path.rstrip('?')) }}">Войти</a>
+      {% endif %}
+    </nav>
+  </header>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+  <div class="toasts" role="status">
+    {% for cat, msg in messages %}
+    <div class="toast {{ cat }}">{{ msg }}</div>
+    {% endfor %}
+  </div>
+  {% endif %}
+  {% endwith %}
+
+  {% block body %}{% endblock %}
+
+  <script src="{{ url_for('static', filename='app.js') }}" defer></script>
+</body>
+</html>
