@@ -21,6 +21,16 @@ services:
   icon: portainer
   description: Управление контейнерами
 
+- name: dfir
+  title: DFIR-платформа
+  group: Security
+  backend: 192.168.0.40:8889
+  scheme: https
+  insecure: true
+  pass_host: true
+  icon: velociraptor
+  description: Пример сервиса, который сам проверяет адрес
+
 - name: nas
   title: NAS
   group: Infrastructure

@@ -307,6 +307,8 @@ def svc_from_form(form) -> tuple[dict | None, str | None]:
         svc['path'] = path
     if form.get('insecure') == 'on':
         svc['insecure'] = True
+    if form.get('pass_host') == 'on':
+        svc['pass_host'] = True
     if form.get('auth') == 'on':
         svc['auth'] = True
     icon = form.get('icon', '').strip()

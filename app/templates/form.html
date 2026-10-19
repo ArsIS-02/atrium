@@ -46,9 +46,10 @@
 
     <div class="checks">
       <label class="check"><input type="checkbox" name="insecure" {{ 'checked' if service.insecure }}> Не проверять сертификат (self-signed)</label>
+      <label class="check"><input type="checkbox" name="pass_host" {{ 'checked' if service.pass_host }}> Передавать адрес как есть (Host)</label>
       <label class="check"><input type="checkbox" name="auth" {{ 'checked' if service.auth }}> Закрыть входом через Caddy</label>
     </div>
-    <p class="hint">Первая галочка — если сервис на https с самоподписанным сертификатом. Вторая — Caddy спросит логин перед открытием; работает, только если на сервере заданы PANEL_USER и PANEL_PASS_HASH.</p>
+    <p class="hint">Первая галочка — если сервис на https с самоподписанным сертификатом. Вторая — если сервис сам проверяет свой адрес (Origin/Host) или после входа уводит на свой адрес: тогда Caddy передаёт ему адрес панели. Третья — Caddy спросит логин перед открытием; работает, только если на сервере заданы PANEL_USER и PANEL_PASS_HASH.</p>
 
     <label>Префикс пути <small>только если сервис открывается не с корня, например по /nagios/. Иначе оставьте пустым.</small>
       <input name="path" value="{{ service.path or '' }}" placeholder="/nagios">

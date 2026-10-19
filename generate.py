@@ -3,6 +3,8 @@
 
 Поля сервиса:
   name, title, group, backend, scheme (http|https), path, insecure,
+  pass_host (передавать в сервис исходный Host как есть, нужно для сервисов,
+  которые проверяют Origin/Host или строят ссылки по своему адресу),
   auth (вход через Caddy basic_auth), icon, description, href (переопределяет ссылку).
 
 Домен берётся из переменной ZONE (по умолчанию lab.example).
@@ -31,13 +33,22 @@ def caddy_block(s: dict) -> str:
                   '    }']
     if path:
         lines.append(f'    redir / {path}/')
-    proxy = f'    reverse_proxy {scheme}://{backend}'
+    # Подблок reverse_proxy нужен, если есть передача Host или настройки https
+    sub = []
+    if s.get('pass_host'):
+        sub.append('        header_up Host {host}')
     if scheme == 'https':
-        proxy += ' {\n        transport http {\n            tls\n'
+        sub.append('        transport http {')
+        sub.append('            tls')
         if s.get('insecure'):
-            proxy += '            tls_insecure_skip_verify\n'
-        proxy += '        }\n    }'
-    lines.append(proxy)
+            sub.append('            tls_insecure_skip_verify')
+        sub.append('        }')
+    if sub:
+        lines.append(f'    reverse_proxy {scheme}://{backend} {{')
+        lines += sub
+        lines.append('    }')
+    else:
+        lines.append(f'    reverse_proxy {scheme}://{backend}')
     lines.append('}')
     return '\n'.join(lines)
 
