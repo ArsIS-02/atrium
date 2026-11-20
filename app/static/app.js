@@ -1,8 +1,8 @@
 // Atrium: живые статусы, поиск, редактор
 (() => {
   const STATUS_MS = 10000;
-  const LABEL = { ok: 'Работает', warn: 'Нужен вход', bad: 'Недоступен', expected_offline: 'Ожидаемо выключен', pending: 'Проверяется…' };
-  const STATUS_CLASSES = ['ok', 'warn', 'bad', 'expected_offline', 'pending'];
+  const LABEL = { ok: 'Работает', warn: 'Нужен вход', bad: 'Недоступен', expected_offline: 'Ожидаемо выключен', maintenance: 'Обслуживание', pending: 'Проверяется…' };
+  const STATUS_CLASSES = ['ok', 'warn', 'bad', 'expected_offline', 'maintenance', 'pending'];
 
   // Токен CSRF для всех POST-запросов из скриптов
   const CSRF = document.querySelector('meta[name="csrf-token"]')?.content || '';
@@ -36,7 +36,7 @@
   function updateSummary() {
     const summary = document.getElementById('status-summary-text');
     if (!summary) return;
-    const counts = { ok: 0, warn: 0, bad: 0, expected_offline: 0, pending: 0 };
+    const counts = { ok: 0, warn: 0, bad: 0, expected_offline: 0, maintenance: 0, pending: 0 };
     let visible = 0;
     for (const c of cards) {
       if (c.classList.contains('is-hidden')) continue;
@@ -44,7 +44,7 @@
       const cls = c.dataset.statusState || 'pending';
       counts[cls] = (counts[cls] || 0) + 1;
     }
-    summary.textContent = `Всего: ${visible} · Работает: ${counts.ok} · Нужен вход: ${counts.warn} · Недоступно: ${counts.bad} · Ожидаемо выключены: ${counts.expected_offline} · Проверяется: ${counts.pending}`;
+    summary.textContent = `Всего: ${visible} · Работает: ${counts.ok} · Нужен вход: ${counts.warn} · Недоступно: ${counts.bad} · Обслуживание: ${counts.maintenance} · Ожидаемо выключены: ${counts.expected_offline} · Проверяется: ${counts.pending}`;
   }
   function applyStatus(data) {
     for (const { card, name, dot, badge } of statusRows) {
@@ -52,6 +52,10 @@
       const cls = s && LABEL[s.class] ? s.class : 'pending';
       let detail = s ? `${LABEL[cls]} · ${s.code ? 'HTTP ' + s.code : 'нет ответа'}` : LABEL.pending;
       if (s?.host) detail += ` · HostDeck: ${s.host}`;
+      if (cls === 'maintenance' && s.maintenance_until) {
+        detail += ' · до ' + new Date(s.maintenance_until * 1000).toLocaleString('ru-RU', { dateStyle: 'medium', timeStyle: 'short' });
+      }
+      if (cls === 'maintenance' && s.maintenance_reason) detail += ` · ${s.maintenance_reason}`;
       card.dataset.statusState = cls;
       for (const el of [dot, badge]) {
         if (!el) continue;
@@ -59,7 +63,9 @@
         el.classList.add(cls);
         el.title = detail;
       }
-      if (badge) badge.textContent = LABEL[cls];
+      if (badge) badge.textContent = cls === 'maintenance' && s.maintenance_until
+        ? `${LABEL[cls]} до ${new Date(s.maintenance_until * 1000).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}`
+        : LABEL[cls];
     }
     updateSummary();
   }

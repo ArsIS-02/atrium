@@ -70,9 +70,9 @@ class ServiceFormTests(unittest.TestCase):
 class HostDeckStatusTests(unittest.TestCase):
     def test_csv_is_indexed_by_full_and_short_names(self):
         response = Mock(text=(
-            'key,name,os,profile,status,index,agent_version,online,expected_offline\n'
-            'workstation,Workstation.Example.Lan,linux,laptop,ok,90,1.0.0,0,1\n'
-            'workstation.example.lan,Workstation.Example.Lan,linux,laptop,ok,90,1.0.0,0,1\n'
+            'key,name,os,profile,status,index,agent_version,online,expected_offline,maintenance_until,maintenance_reason\n'
+            'workstation,Workstation.Example.Lan,linux,laptop,ok,90,1.0.0,0,1,1893456000,Плановое обновление\n'
+            'workstation.example.lan,Workstation.Example.Lan,linux,laptop,ok,90,1.0.0,0,1,1893456000,Плановое обновление\n'
         ))
         response.raise_for_status.return_value = None
         with patch.object(main, 'HOSTDECK_URL', 'http://hostdeck:8080'), \
@@ -82,6 +82,8 @@ class HostDeckStatusTests(unittest.TestCase):
         self.assertEqual(states['workstation'], states['workstation.example.lan'])
         self.assertFalse(states['workstation']['online'])
         self.assertTrue(states['workstation']['expected_offline'])
+        self.assertEqual(states['workstation']['maintenance_until'], 1893456000)
+        self.assertEqual(states['workstation']['maintenance_reason'], 'Плановое обновление')
         get.assert_called_once_with(
             'http://hostdeck:8080/api/export/hosts.csv?key=name',
             headers={'X-HostDeck-Token': 'secret'}, timeout=3,
@@ -114,6 +116,25 @@ class HostDeckStatusTests(unittest.TestCase):
                 result = main.probe_with_hostdeck(svc, {'workstation.example.lan': state})
                 self.assertEqual(result['class'], expected)
                 self.assertEqual(result['host'], 'workstation.example.lan')
+
+    def test_maintenance_requires_bad_probe_and_takes_priority(self):
+        svc = {'name': 'demo', 'backend': 'service:8080', 'host': 'workstation.example.lan'}
+        active = {'online': False, 'expected_offline': True,
+                  'maintenance_until': main.time.time() + 3600, 'maintenance_reason': 'Обновление'}
+        with patch('app.main.probe', return_value={'code': 0, 'class': 'bad', 'checked': 1}):
+            result = main.probe_with_hostdeck(svc, {'workstation.example.lan': active})
+        self.assertEqual(result['class'], 'maintenance')
+        self.assertEqual(result['maintenance_reason'], 'Обновление')
+        self.assertGreater(result['maintenance_until'], main.time.time())
+        cases = [
+            ({'code': 200, 'class': 'ok', 'checked': 1}, active, 'ok'),
+            ({'code': 401, 'class': 'warn', 'checked': 1}, active, 'warn'),
+            ({'code': 0, 'class': 'bad', 'checked': 1},
+             dict(active, maintenance_until=main.time.time() - 1), 'expected_offline'),
+        ]
+        for probe_result, state, expected in cases:
+            with self.subTest(expected=expected), patch('app.main.probe', return_value=probe_result):
+                self.assertEqual(main.probe_with_hostdeck(svc, {'workstation.example.lan': state})['class'], expected)
 
     def test_missing_hostdeck_row_does_not_hide_failure(self):
         svc = {'name': 'demo', 'backend': 'service:8080', 'host': 'missing.example.lan'}

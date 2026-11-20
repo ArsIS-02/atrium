@@ -371,7 +371,7 @@ def probe(svc: dict, timeout: float = 3.0) -> dict:
     return {'code': code, 'class': classify(code), 'checked': int(time.time())}
 
 
-def load_hostdeck_states() -> dict[str, dict[str, bool]]:
+def load_hostdeck_states() -> dict[str, dict]:
     """Один снимок состояния хостов на цикл опроса. Ошибка интеграции не мешает HTTP-проверкам."""
     if not HOSTDECK_URL or not HOSTDECK_EXPORT_TOKEN:
         return {}
@@ -384,9 +384,15 @@ def load_hostdeck_states() -> dict[str, dict[str, bool]]:
         response.raise_for_status()
         states = {}
         for row in csv.DictReader(io.StringIO(response.text)):
+            try:
+                maintenance_until = float(row.get('maintenance_until') or 0)
+            except (TypeError, ValueError):
+                maintenance_until = 0
             state = {
                 'online': str(row.get('online', '')).strip().lower() in ('1', 'true', 'yes'),
                 'expected_offline': str(row.get('expected_offline', '')).strip().lower() in ('1', 'true', 'yes'),
+                'maintenance_until': maintenance_until,
+                'maintenance_reason': str(row.get('maintenance_reason') or ''),
             }
             for value in (row.get('name'), row.get('key')):
                 key = str(value or '').strip().lower()
@@ -401,16 +407,21 @@ def load_hostdeck_states() -> dict[str, dict[str, bool]]:
             response.close()
 
 
-def probe_with_hostdeck(svc: dict, states: dict[str, dict[str, bool]]) -> dict:
-    """Меняет только недоступность заведомо выключенного хоста, не скрывая сбой приложения."""
+def probe_with_hostdeck(svc: dict, states: dict[str, dict]) -> dict:
+    """Отмечает обслуживание и ожидаемое выключение только при неуспешной HTTP-проверке."""
     result = probe(svc)
     host = str(svc.get('host') or '').strip().lower()
     if host:
         result['host'] = host
     state = states.get(host) if host else None
-    if (result['class'] == 'bad' and state and state['expected_offline']
-            and not state['online']):
-        result['class'] = 'expected_offline'
+    if result['class'] == 'bad' and state:
+        maintenance_until = state.get('maintenance_until', 0)
+        if maintenance_until > time.time():
+            result['class'] = 'maintenance'
+            result['maintenance_until'] = int(maintenance_until)
+            result['maintenance_reason'] = state.get('maintenance_reason', '')
+        elif state['expected_offline'] and not state['online']:
+            result['class'] = 'expected_offline'
     return result
 
 
