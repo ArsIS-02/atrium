@@ -2,6 +2,7 @@
 # services.yaml в репозиторий не попадает (см. .gitignore).
 #
 # backend — host:port, где сервис реально слушает (без http:// и без пути).
+# host — необязательное точное имя хоста в HostDeck для статуса «Ожидаемо выключен».
 # Сервис на той же машине, что и Caddy: host.containers.internal:ПОРТ
 services:
 - name: grafana
@@ -43,6 +44,7 @@ services:
   title: Роутер
   group: Infrastructure
   backend: 192.168.0.1:80
+  host: router.example.lan
   scheme: http
   icon: router
   description: Веб-интерфейс роутера

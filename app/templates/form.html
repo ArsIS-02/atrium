@@ -44,6 +44,10 @@
       </label>
     </div>
 
+    <label>Хост в HostDeck <small>Необязательно. Точное имя хоста в HostDeck. Если хост можно держать выключенным и он не на связи, сервис получит нейтральный статус «Ожидаемо выключен». Если хост работает, ошибка сервиса не скрывается.</small>
+      <input name="host" value="{{ service.host or '' }}" placeholder="server.example.lan" autocomplete="off" spellcheck="false">
+    </label>
+
     <div class="checks">
       <label class="check"><input type="checkbox" name="insecure" {{ 'checked' if service.insecure }}> Не проверять сертификат (self-signed)</label>
       <label class="check"><input type="checkbox" name="pass_host" {{ 'checked' if service.pass_host }}> Передавать адрес как есть (Host)</label>

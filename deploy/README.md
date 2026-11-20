@@ -43,11 +43,15 @@ podman exec caddy caddy hash-password        # ввести пароль, пол
 ```bash
 podman run -d --name atrium \
   -e ZONE=<ZONE> \
+  -e HOSTDECK_URL=http://hostdeck:8080 \
+  -e HOSTDECK_EXPORT_TOKEN=<токен-выгрузки-HostDeck> \
   -p 5000:5000 \
   -v <DATA>:/data:z \
   -v <CADDY_CONFIG>:/caddy:z \
   localhost/atrium:latest
 ```
+
+Переменные `HOSTDECK_URL` и `HOSTDECK_EXPORT_TOKEN` необязательны. Без них работают только HTTP-проверки. Для интеграции Atrium и HostDeck должны быть в одной сети контейнеров (в примере выше добавьте `--network <сеть>`), а в карточках сервисов заполните `host` точным именем из HostDeck. Токен передаётся внутри сети заголовком и в URL не попадает.
 
 ## 5. Перезагрузка Caddy после изменений
 

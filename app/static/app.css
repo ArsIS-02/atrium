@@ -196,6 +196,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .status-badge.ok { color: var(--text); background: rgba(52, 199, 89, .16); box-shadow: inset 0 0 0 1px rgba(52, 199, 89, .32); }
 .status-badge.warn { color: var(--text); background: rgba(255, 159, 10, .17); box-shadow: inset 0 0 0 1px rgba(255, 159, 10, .34); }
 .status-badge.bad { color: var(--text); background: rgba(255, 59, 48, .14); box-shadow: inset 0 0 0 1px rgba(255, 59, 48, .30); }
+.status-badge.expected_offline { color: var(--text); background: rgba(10, 132, 255, .14); box-shadow: inset 0 0 0 1px rgba(10, 132, 255, .30); }
 .status-badge.pending { color: var(--text2); }
 
 .dot {
@@ -208,6 +209,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .dot.ok { background: var(--ok); }
 .dot.warn { background: var(--warn); }
 .dot.bad { background: var(--bad); }
+.dot.expected_offline { background: var(--accent); }
 .dot.pending { background: var(--text3); animation: pulse 1.4s ease-in-out infinite; }
 
 .actions {

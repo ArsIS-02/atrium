@@ -1,7 +1,8 @@
 // Atrium: живые статусы, поиск, редактор
 (() => {
   const STATUS_MS = 10000;
-  const LABEL = { ok: 'Работает', warn: 'Нужен вход', bad: 'Недоступен', pending: 'Проверяется…' };
+  const LABEL = { ok: 'Работает', warn: 'Нужен вход', bad: 'Недоступен', expected_offline: 'Ожидаемо выключен', pending: 'Проверяется…' };
+  const STATUS_CLASSES = ['ok', 'warn', 'bad', 'expected_offline', 'pending'];
 
   // Токен CSRF для всех POST-запросов из скриптов
   const CSRF = document.querySelector('meta[name="csrf-token"]')?.content || '';
@@ -35,7 +36,7 @@
   function updateSummary() {
     const summary = document.getElementById('status-summary-text');
     if (!summary) return;
-    const counts = { ok: 0, warn: 0, bad: 0, pending: 0 };
+    const counts = { ok: 0, warn: 0, bad: 0, expected_offline: 0, pending: 0 };
     let visible = 0;
     for (const c of cards) {
       if (c.classList.contains('is-hidden')) continue;
@@ -43,17 +44,18 @@
       const cls = c.dataset.statusState || 'pending';
       counts[cls] = (counts[cls] || 0) + 1;
     }
-    summary.textContent = `Всего: ${visible} · Работает: ${counts.ok} · Нужен вход: ${counts.warn} · Недоступно: ${counts.bad} · Проверяется: ${counts.pending}`;
+    summary.textContent = `Всего: ${visible} · Работает: ${counts.ok} · Нужен вход: ${counts.warn} · Недоступно: ${counts.bad} · Ожидаемо выключены: ${counts.expected_offline} · Проверяется: ${counts.pending}`;
   }
   function applyStatus(data) {
     for (const { card, name, dot, badge } of statusRows) {
       const s = data[name];
       const cls = s && LABEL[s.class] ? s.class : 'pending';
-      const detail = s ? `${LABEL[cls]} · ${s.code ? 'HTTP ' + s.code : 'нет ответа'}` : LABEL.pending;
+      let detail = s ? `${LABEL[cls]} · ${s.code ? 'HTTP ' + s.code : 'нет ответа'}` : LABEL.pending;
+      if (s?.host) detail += ` · HostDeck: ${s.host}`;
       card.dataset.statusState = cls;
       for (const el of [dot, badge]) {
         if (!el) continue;
-        el.classList.remove('ok', 'warn', 'bad', 'pending');
+        el.classList.remove(...STATUS_CLASSES);
         el.classList.add(cls);
         el.title = detail;
       }

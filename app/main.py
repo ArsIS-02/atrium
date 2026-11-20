@@ -1,7 +1,9 @@
 """Atrium: панель и редактор каталога сервисов домашней сети."""
 from __future__ import annotations
 
+import csv
 import datetime
+import io
 import json
 import os
 import re
@@ -29,6 +31,8 @@ GENERATE = Path(os.environ.get('GENERATE_SCRIPT', HOMELAB_DIR / 'generate.py'))
 CADDY_IMPORT = Path(os.environ.get('CADDY_IMPORT', '/caddy/Caddyfile.apps'))
 ZONE = os.environ.get('ZONE', 'lab.example')
 STATUS_INTERVAL = int(os.environ.get('STATUS_INTERVAL', '30'))
+HOSTDECK_URL = os.environ.get('HOSTDECK_URL', '').rstrip('/')
+HOSTDECK_EXPORT_TOKEN = os.environ.get('HOSTDECK_EXPORT_TOKEN', '')
 
 # Где Caddy слушает HTTPS с сервера (для проверки сертификата по SNI)
 CADDY_HOST = os.environ.get('CADDY_HOST', 'host.containers.internal')
@@ -57,6 +61,7 @@ ICON_MAX_BYTES = 512 * 1024
 ICON_NAME_RE = re.compile(r'^[a-z0-9][a-z0-9-]{0,62}\.(png|svg|webp)$')
 
 NAME_RE = re.compile(r'^[a-z0-9][a-z0-9-]{0,62}$')
+HOST_NAME_RE = re.compile(r'^[a-z0-9][a-z0-9.-]{0,254}$')
 SCHEMES = ('http', 'https')
 BACKEND_RE = re.compile(r'^(\[[0-9a-fA-F:.]+\]|[A-Za-z0-9._-]+):(\d{1,5})$')
 SCHEME_RE = re.compile(r'^[a-zA-Z][a-zA-Z0-9+.-]*://')
@@ -224,7 +229,7 @@ def load() -> dict:
 def save(data: dict) -> None:
     header = ('# Единый источник истины: сервисы домашней лаборатории.\n'
               '# Правится через Atrium (можно и вручную).\n'
-              '# Поля: name, title, group, backend, scheme (http|https), path, insecure, auth, icon, description, href\n\n')
+              '# Поля: name, title, group, backend, scheme (http|https), host, path, insecure, auth, icon, description, href\n\n')
     tmp = SERVICES_YAML.with_name(SERVICES_YAML.name + '.tmp')
     tmp.write_text(header + yaml.safe_dump(data, allow_unicode=True, sort_keys=False,
                                            default_flow_style=False), encoding='utf-8')
@@ -300,6 +305,11 @@ def svc_from_form(form) -> tuple[dict | None, str | None]:
         return None, 'Нужно название'
     if svc['scheme'] not in SCHEMES:
         return None, 'Неверная схема'
+    host = form.get('host', '').strip().lower()
+    if host:
+        if not HOST_NAME_RE.fullmatch(host):
+            return None, 'Хост HostDeck: только латинские буквы, цифры, точки и дефисы'
+        svc['host'] = host
     path = form.get('path', '').strip()
     if path:
         if not path.startswith('/'):
@@ -361,10 +371,54 @@ def probe(svc: dict, timeout: float = 3.0) -> dict:
     return {'code': code, 'class': classify(code), 'checked': int(time.time())}
 
 
+def load_hostdeck_states() -> dict[str, dict[str, bool]]:
+    """Один снимок состояния хостов на цикл опроса. Ошибка интеграции не мешает HTTP-проверкам."""
+    if not HOSTDECK_URL or not HOSTDECK_EXPORT_TOKEN:
+        return {}
+    response = None
+    try:
+        response = requests.get(
+            HOSTDECK_URL + '/api/export/hosts.csv?key=name',
+            headers={'X-HostDeck-Token': HOSTDECK_EXPORT_TOKEN}, timeout=3,
+        )
+        response.raise_for_status()
+        states = {}
+        for row in csv.DictReader(io.StringIO(response.text)):
+            state = {
+                'online': str(row.get('online', '')).strip().lower() in ('1', 'true', 'yes'),
+                'expected_offline': str(row.get('expected_offline', '')).strip().lower() in ('1', 'true', 'yes'),
+            }
+            for value in (row.get('name'), row.get('key')):
+                key = str(value or '').strip().lower()
+                if key:
+                    states[key] = state
+        return states
+    except (requests.RequestException, csv.Error, ValueError) as exc:
+        app.logger.warning('HostDeck status unavailable: %s', exc)
+        return {}
+    finally:
+        if response is not None:
+            response.close()
+
+
+def probe_with_hostdeck(svc: dict, states: dict[str, dict[str, bool]]) -> dict:
+    """Меняет только недоступность заведомо выключенного хоста, не скрывая сбой приложения."""
+    result = probe(svc)
+    host = str(svc.get('host') or '').strip().lower()
+    if host:
+        result['host'] = host
+    state = states.get(host) if host else None
+    if (result['class'] == 'bad' and state and state['expected_offline']
+            and not state['online']):
+        result['class'] = 'expected_offline'
+    return result
+
+
 def poll_once() -> None:
     services = load()['services']
+    states = load_hostdeck_states()
     with ThreadPoolExecutor(max_workers=8) as pool:
-        results = list(pool.map(lambda s: (s['name'], probe(s)), services))
+        results = list(pool.map(lambda s: (s['name'], probe_with_hostdeck(s, states)), services))
     with _status_lock:
         _status.clear()
         _status.update(results)
