@@ -21,20 +21,45 @@
         if (hit) shown++;
       }
       if (noMatch) noMatch.hidden = shown > 0 || cards.length === 0;
+      updateSummary();
     });
   }
 
-  // Живые статусы: опрашиваем сервер и плавно меняем точки
-  const dots = cards.map(c => [c.dataset.name, c.querySelector('[data-status]')]);
-  function applyStatus(data) {
-    for (const [name, dot] of dots) {
-      if (!dot) continue;
-      const s = data[name];
-      const cls = s ? s.class : 'pending';
-      dot.classList.remove('ok', 'warn', 'bad', 'pending');
-      dot.classList.add(cls);
-      dot.title = s ? `${LABEL[cls]} · HTTP ${s.code || 'нет ответа'}` : LABEL.pending;
+  // Живые статусы: цвет дублируем текстом, сводка учитывает фильтр поиска
+  const statusRows = cards.map(c => ({
+    card: c,
+    name: c.dataset.name,
+    dot: c.querySelector('[data-status]'),
+    badge: c.querySelector('[data-status-label]'),
+  }));
+  function updateSummary() {
+    const summary = document.getElementById('status-summary-text');
+    if (!summary) return;
+    const counts = { ok: 0, warn: 0, bad: 0, pending: 0 };
+    let visible = 0;
+    for (const c of cards) {
+      if (c.classList.contains('is-hidden')) continue;
+      visible++;
+      const cls = c.dataset.statusState || 'pending';
+      counts[cls] = (counts[cls] || 0) + 1;
     }
+    summary.textContent = `Всего: ${visible} · Работает: ${counts.ok} · Нужен вход: ${counts.warn} · Недоступно: ${counts.bad} · Проверяется: ${counts.pending}`;
+  }
+  function applyStatus(data) {
+    for (const { card, name, dot, badge } of statusRows) {
+      const s = data[name];
+      const cls = s && LABEL[s.class] ? s.class : 'pending';
+      const detail = s ? `${LABEL[cls]} · ${s.code ? 'HTTP ' + s.code : 'нет ответа'}` : LABEL.pending;
+      card.dataset.statusState = cls;
+      for (const el of [dot, badge]) {
+        if (!el) continue;
+        el.classList.remove('ok', 'warn', 'bad', 'pending');
+        el.classList.add(cls);
+        el.title = detail;
+      }
+      if (badge) badge.textContent = LABEL[cls];
+    }
+    updateSummary();
   }
   async function pollStatus() {
     try {
@@ -42,7 +67,8 @@
       if (r.ok) applyStatus(await r.json());
     } catch (_) { /* сеть недоступна: оставляем прошлые статусы */ }
   }
-  if (dots.length) {
+  updateSummary();
+  if (statusRows.length) {
     pollStatus();
     setInterval(pollStatus, STATUS_MS);
   }
